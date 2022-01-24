@@ -70,6 +70,27 @@ Its responsibilities are to create and stop a process, manage cgroups and resour
 CLI client will interact with the server over gRPC API. 
 See [service.proto](/proto/service.proto)
 
+
+## log streaming
+
+Two main things need to be considered when implementing this feature.
+We need to store all logs that the process produces so we are able to provide them whenever we ask for them. 
+We need to stream new log messages after we provided all previous ones.
+
+The server will create an `mpsc` channel and it will keep the receiving part of it. Each new process will get the sending part of the channel to send log messages back. It will simplify the part of storing all the logs in one place. 
+
+The streaming part is a lot harder to do. There are a couple of options that we can consider.
+
+We could create a new file for each process with the name of the job id and write all the messages here. Then we would read the already stored logs when a client connects and subscribe that client for file changes so when the new data is appended we would send it back to the client.
+Since this is a toy project we don't want to clutter your environment with new files then we'll store all the data in memory.
+
+The solution for this is as follows:
+The server will keep all the logs in the hash map with the pairs `job_id: log buffer`. Then when the client requests logs, we will stream already existing logs back to the client and subscribe client for the new updates to that data structure.
+One option is to utilize something like the `async_stream` crate. Then we could put that hash map into `RwLock` and then put that into `Arc` to share between clients. And then create async stream out of that. In this case, we'll need to request a lock for each write and read.
+The other option is to create channels for each client, create another hash map for connected peers that would map peers to its channel, and just send messages through that channel. In this case, we don't need to lock that data structure as there will be only one place that manipulate that hash map.
+
+
+
 ## cgroups resource control
 There are two versions of cgroups available, but this project will support only cgroups v2. It's a newer version with a simplified configuration.
 It has only a single hierarchy which forms a tree structure. 
