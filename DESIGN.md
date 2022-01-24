@@ -24,6 +24,42 @@ A user can start a process, stop a process, query for process status, or get a s
 ## client
 A CLI client is a simple program that will use protocol buffer messages to communicate with the server over gRPC.
 
+It will be named `jobc` and its command will match the gRPC interface.
+
+Example invocations of the CLI to show the CLI UX:
+
+```
+$ jobc start sleep 60
+a62dfccc-2ff9-411d-a9ef-d4812ed3d867
+```
+
+```
+$ jobc stop a62dfccc-2ff9-411d-a9ef-d4812ed3d867
+```
+
+```
+$ jobc logs a62dfccc-2ff9-411d-a9ef-d4812ed3d867
+"{ "log": "log message here", "stream": "stdout", "time": "2022-01-24T10:00:00.0Z }"
+"{ "log": "another log message", "stream": "stdout", "time": "2022-01-24T10:01:00.0Z }"
+<stream of log messages>
+```
+
+```
+$ jobc status a62dfccc-2ff9-411d-a9ef-d4812ed3d867
+running
+```
+
+```
+$ jobc status a62dfccc-2ff9-411d-a9ef-d4812ed3d867
+stopped (signal: 9)
+```
+
+```
+$ jobc status a62dfccc-2ff9-411d-a9ef-d4812ed3d867
+finished (exit code: 0)
+```
+
+
 ## server
 A server is an application that will expose a gRPC service and utilize a worker library to do all the heavy work. It's a thin layer over the worker library that handles authentication and communication with the client. I'll assume that the user starting the server application will have all permissions to manage cgroups and to create new processes.
 
