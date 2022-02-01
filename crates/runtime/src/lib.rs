@@ -272,8 +272,14 @@ impl JobRuntime {
         mut kill_switch: oneshot::Receiver<()>,
         event_tx: UnboundedSender<RuntimeEvent>,
     ) {
-        let stdout = BufReader::new(child.stdout.take().expect("whatever stdout error"));
-        let stderr = BufReader::new(child.stderr.take().expect("whatever stdout error"));
+        let stdout = BufReader::new(child.stdout.take().expect(&format!(
+            "can't get access to stdout fd from child for job: {}",
+            job
+        )));
+        let stderr = BufReader::new(child.stderr.take().expect(&format!(
+            "can't get access to stderr fd from child for job: {}",
+            job
+        )));
         let mut stdout_lines = stdout.lines();
         let mut stderr_lines = stderr.lines();
 
