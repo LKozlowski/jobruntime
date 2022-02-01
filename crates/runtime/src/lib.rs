@@ -315,7 +315,7 @@ impl JobRuntime {
 
     fn check_access_permissions(&self, job: JobId, owner: Owner) -> bool {
         if let Some(job_instance) = self.jobs.get(&job) {
-            if (owner == ADMIN_ROLE) | (job_instance.owner == owner) {
+            if (owner == ADMIN_ROLE) || (job_instance.owner == owner) {
                 return true;
             };
         }
