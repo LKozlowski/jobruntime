@@ -1,12 +1,13 @@
 pub mod limits;
 
+use bytes::{Bytes, BytesMut};
 use limits::{Cgroup, ResourceLimits};
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Stdio};
 use thiserror::Error;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::AsyncReadExt;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
@@ -27,6 +28,8 @@ pub type StatusSender = oneshot::Sender<Result<JobStatus, RuntimeError>>;
 pub type StopSender = oneshot::Sender<Result<(), RuntimeError>>;
 pub type StartSender = oneshot::Sender<JobId>;
 
+pub const LOG_SIZE: usize = 1024;
+
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("unathorized")]
@@ -39,8 +42,8 @@ pub enum RuntimeError {
 
 #[derive(Debug, Clone)]
 pub enum LogRecord {
-    Stdout(String),
-    Stderr(String),
+    Stdout(Bytes),
+    Stderr(Bytes),
 }
 
 #[derive(Default, Debug)]
@@ -272,16 +275,14 @@ impl JobRuntime {
         mut kill_switch: oneshot::Receiver<()>,
         event_tx: UnboundedSender<RuntimeEvent>,
     ) {
-        let stdout = BufReader::new(child.stdout.take().expect(&format!(
+        let mut stdout = child.stdout.take().expect(&format!(
             "can't get access to stdout fd from child for job: {}",
             job
-        )));
-        let stderr = BufReader::new(child.stderr.take().expect(&format!(
+        ));
+        let mut stderr = child.stderr.take().expect(&format!(
             "can't get access to stderr fd from child for job: {}",
             job
-        )));
-        let mut stdout_lines = stdout.lines();
-        let mut stderr_lines = stderr.lines();
+        ));
 
         if let Some(pid) = child.id() {
             event_tx
@@ -292,13 +293,20 @@ impl JobRuntime {
                 .expect(RUNTIME_EVENT_ERROR_MSG);
         };
 
+        let mut stdout_buf = BytesMut::with_capacity(LOG_SIZE);
+        let mut stderr_buf = BytesMut::with_capacity(LOG_SIZE);
+
         loop {
             tokio::select! {
-                Ok(Some(data)) = stdout_lines.next_line() => {
+                Ok(_) = stdout.read_buf(&mut stdout_buf)=> {
+                    let data = Bytes::copy_from_slice(&stdout_buf);
                     event_tx.send(RuntimeEvent::LogCreated { job, record: LogRecord::Stdout(data)} ).expect(RUNTIME_EVENT_ERROR_MSG);
+                    stdout_buf.clear();
                 },
-                Ok(Some(data)) = stderr_lines.next_line() => {
+                Ok(_) = stderr.read_buf(&mut stderr_buf) => {
+                    let data = Bytes::copy_from_slice(&stderr_buf);
                     event_tx.send(RuntimeEvent::LogCreated { job, record: LogRecord::Stderr(data)} ).expect(RUNTIME_EVENT_ERROR_MSG);
+                    stderr_buf.clear();
                 },
                 Ok(status) = child.wait() => {
                     event_tx.send(RuntimeEvent::JobExit{ job, status} ).expect(RUNTIME_EVENT_ERROR_MSG);
