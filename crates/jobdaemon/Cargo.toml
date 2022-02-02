@@ -1,0 +1,24 @@
+[package]
+name = "jobdaemon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.53"
+async-stream = "0.3.2"
+clap = { version = "3.0.12", features = ["derive"] }
+runtime = { path = "../runtime" }
+cgroups-rs = "0.2.8"
+x509-parser = "0.12.0"
+tonic = { version = "0.6.2", features = ["tls", "transport"] }
+prost = "0.9.0"
+tokio = { version = "1.16.0", features = ["full"] }
+futures = "0.3"
+futures-util = "0.3.19"
+tokio-stream = "0.1.8"
+bytes = "1.1.0"
+uuid = { version = "0.8.2", features = ["v4"] }
+tokio-rustls = "0.22"
+
+[build-dependencies]
+tonic-build = "0.6.2"

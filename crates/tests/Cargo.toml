@@ -1,0 +1,14 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.53"
+runtime = { path = "../runtime" }
+jobdaemon = { path = "../jobdaemon" }
+jobclient = { path = "../jobclient" }
+tokio = { version = "1.16.0", features = ["full"] }
+tonic = { version = "0.6.2", features = ["tls", "transport"] }

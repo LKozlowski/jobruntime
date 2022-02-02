@@ -33,11 +33,17 @@ message JobStopRequest {
     string uuid = 1;
 }
 
+message JobStopResponse {}
+
 message JobStartRequest {
     // The first value should be path to the file that is associated with the process being started
     // Next values are arguments that will be passed to the process
     repeated string args = 1;
     JobResourceLimits limits = 2;
+}
+
+message JobStartResponse {
+    string uuid = 1;
 }
 
 message JobLogsRequest {
@@ -66,12 +72,12 @@ message JobStatusResponse {
 
 
 service JobRuntime {
-    rpc StartJob(JobStartRequest) returns (JobStatusResponse);
+    rpc StartJob(JobStartRequest) returns (JobStartResponse);
 
     // Stops the job by sending SIGKILL to the process
     // Note: We could implement it by first sending SIGTERM signal to politely ask a program to terminate and then after specified timeout send a SIGKILL signal
     // but I think that SIGKILL is enough for this project
-    rpc StopJob(JobStopRequest) returns (JobStatusResponse);
+    rpc StopJob(JobStopRequest) returns (JobStopResponse);
     rpc FetchJobStatus(JobStatusRequest) returns (JobStatusResponse);
     rpc FetchJobLogs(JobLogsRequest) returns (stream JobLogsResponse);
 }

@@ -24,7 +24,7 @@ pub type JobId = Uuid;
 pub type Owner = String;
 pub type RuntimeSender = UnboundedSender<RuntimeCommand>;
 pub type LogSender = UnboundedSender<LogRecord>;
-pub type StatusSender = oneshot::Sender<Result<JobStatus, RuntimeError>>;
+pub type StatusSender = oneshot::Sender<Result<JobStatusResponse, RuntimeError>>;
 pub type StopSender = oneshot::Sender<Result<(), RuntimeError>>;
 pub type StartSender = oneshot::Sender<JobId>;
 
@@ -38,6 +38,13 @@ pub enum RuntimeError {
     JobDoesNotExists,
     #[error("io error")]
     Io(#[from] std::io::Error),
+}
+
+#[derive(Debug)]
+pub struct JobStatusResponse {
+    pub job: JobId,
+    pub owner: String,
+    pub status: JobStatus,
 }
 
 #[derive(Debug, Clone)]
@@ -327,9 +334,9 @@ impl JobRuntime {
         }
     }
 
-    fn check_access_permissions(&self, job: JobId, owner: Owner) -> bool {
+    fn check_access_permissions(&self, job: JobId, owner: &Owner) -> bool {
         if let Some(job_instance) = self.jobs.get(&job) {
-            if (owner == ADMIN_ROLE) || (job_instance.owner == owner) {
+            if (owner == ADMIN_ROLE) || (job_instance.owner == *owner) {
                 return true;
             };
         }
@@ -358,7 +365,7 @@ impl JobRuntime {
         owner: Owner,
         sender: LogSender,
     ) -> Result<(), RuntimeError> {
-        if !self.check_access_permissions(job, owner) {
+        if !self.check_access_permissions(job, &owner) {
             return Err(RuntimeError::Unauthorized);
         };
 
@@ -380,7 +387,7 @@ impl JobRuntime {
     }
 
     fn stop_job(&mut self, job: JobId, owner: Owner) -> Result<(), RuntimeError> {
-        if !self.check_access_permissions(job, owner) {
+        if !self.check_access_permissions(job, &owner) {
             return Err(RuntimeError::Unauthorized);
         };
         if let Some(rx) = self.get_job(job)?.kill_switch.take() {
@@ -389,11 +396,15 @@ impl JobRuntime {
         Ok(())
     }
 
-    fn send_status(&mut self, job: JobId, owner: Owner) -> Result<JobStatus, RuntimeError> {
-        if !self.check_access_permissions(job, owner) {
+    fn send_status(&mut self, job: JobId, owner: Owner) -> Result<JobStatusResponse, RuntimeError> {
+        if !self.check_access_permissions(job, &owner) {
             return Err(RuntimeError::Unauthorized);
         };
-        Ok(self.get_job(job)?.status.clone())
+        Ok(JobStatusResponse {
+            job,
+            owner,
+            status: self.get_job(job)?.status.clone(),
+        })
     }
 
     fn start_job(
