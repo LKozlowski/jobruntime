@@ -42,9 +42,6 @@ message JobStartRequest {
 
 message JobLogsRequest {
     string uuid = 1;
-
-    // either stdout or stderr
-    string type = 2;
 }
 
 message JobLogsResponse {
@@ -63,6 +60,7 @@ message JobStatusResponse {
     oneof status {
         int32 pid = 3;
         int32 exit_code = 4;
+        int32 signal = 5;
     }
 }
 
