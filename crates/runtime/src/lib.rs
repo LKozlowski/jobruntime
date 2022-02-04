@@ -247,11 +247,13 @@ impl JobRuntime {
 
                                     };
                                 }
+                                self.peers.remove(&job);
                             },
                             RuntimeEvent::JobKill { job } => {
                                 if let Ok(job_instance) = self.get_job(job) {
                                     job_instance.killed(SIGKILL);
                                 }
+                                self.peers.remove(&job);
                             },
                             RuntimeEvent::JobStart { job, pid } => {
                                 if let Ok(job_instance) = self.get_job(job) {
