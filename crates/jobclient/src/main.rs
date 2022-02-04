@@ -1,6 +1,7 @@
 use clap::{AppSettings, Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
+use std::io::{self, Write};
 use tonic::transport::{Channel, ClientTlsConfig};
 
 use grpc_jobruntime::job_runtime_client::JobRuntimeClient;
@@ -118,8 +119,12 @@ async fn main() -> anyhow::Result<()> {
             let result = client.fetch_job_logs(request).await?;
 
             let mut stream = result.into_inner();
+            let current_stdout = io::stdout();
+            let mut handle = current_stdout.lock();
             while let Some(res) = stream.message().await? {
-                print!("{}", String::from_utf8_lossy(&res.data));
+                if let Err(err) = handle.write_all(&res.data) {
+                    println!("error while writing to stdout: {}", err);
+                }
             }
         }
         Commands::Stop { uuid } => {
