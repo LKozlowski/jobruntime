@@ -334,6 +334,22 @@ impl JobRuntime {
                 }
             };
         }
+
+        // Check for any unsend data in stdout and stderr
+        // This should be refactored into proper function
+        if let Ok(_) = stdout.read_buf(&mut stdout_buf).await {
+            let data = Bytes::copy_from_slice(&stdout_buf);
+            event_tx.send(RuntimeEvent::LogCreated { job, record: LogRecord::Stdout(data)} ).expect(RUNTIME_EVENT_ERROR_MSG);
+            stdout_buf.clear();
+        }
+
+        if let Ok(_) = stderr.read_buf(&mut stderr_buf).await {
+            let data = Bytes::copy_from_slice(&stderr_buf);
+            event_tx.send(RuntimeEvent::LogCreated { job, record: LogRecord::Stderr(data)} ).expect(RUNTIME_EVENT_ERROR_MSG);
+            stdout_buf.clear();
+        }
+
+
     }
 
     fn check_access_permissions(&self, job: JobId, owner: &Owner) -> bool {
